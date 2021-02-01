@@ -96,3 +96,107 @@ FROM dst_project.flights_v f
 WHERE f.actual_arrival IS NOT NULL
   ORDER  BY 2 DESC
 LIMIT 1
+
+Вопрос 4. Сколько составляет средняя дальность полета среди всех самолетов в минутах? Секунды округляются в меньшую сторону (отбрасываются до минут).
+
+SELECT date_part('hour', avg(f.scheduled_arrival - f.scheduled_departure)) * 60 + date_part('minute', avg(f.scheduled_arrival - f.scheduled_departure))
+FROM dst_project.flights_v f
+
+Задание 4.5
+Вопрос 1. Мест какого класса у SU9 больше всего?
+SELECT foo.most_pop
+FROM
+  (SELECT s.fare_conditions most_pop,
+          count(s.fare_conditions) most_pop_count
+   FROM dst_project.seats s
+   WHERE s.aircraft_code = 'SU9'
+   GROUP BY 1
+   ORDER BY 2 DESC
+   LIMIT 1) foo
+   
+Вопрос 2. Какую самую минимальную стоимость составило бронирование за всю историю?
+
+SELECT min(b.total_amount)
+FROM dst_project.bookings b
+
+Вопрос 3. Какой номер места был у пассажира с id = 4313 788533?
+
+SELECT b.seat_no
+FROM dst_project.boarding_passes b
+JOIN dst_project.tickets t ON b.ticket_no=t.ticket_no
+WHERE t.passenger_id='4313 788533'
+
+Задание 5.1
+
+Вопрос 1. Анапа — курортный город на юге России. Сколько рейсов прибыло в Анапу за 2017 год?
+
+  SELECT foo.flies
+FROM
+  (SELECT f.arrival_city,
+          date_part('year', f.actual_arrival) fly_year,
+          count(*) flies
+   FROM dst_project.flights_v f
+   GROUP BY 1,
+            2
+   HAVING f.arrival_city='Анапа'
+   AND date_part('year', f.actual_arrival)='2017') foo
+ 
+Вопрос 2. Сколько рейсов из Анапы вылетело зимой 2017 года?
+
+SELECT foo.flies
+FROM
+  (SELECT f.departure_city,
+          date_part('year', f.actual_departure) fly_year,
+          count(*) flies
+    FROM dst_project.flights_v f
+   WHERE f.departure_city='Анапа'
+     AND date_part('year', f.actual_departure)='2017'
+     AND date_part('month', f.actual_departure) NOT BETWEEN 3 AND 11
+   GROUP BY 1,2
+   ) foo
+          date_part('year', f.actual_departure) fly_year,
+          count(*) flies
+   FROM dst_project.flights_v f
+   WHERE f.departure_city='Анапа'
+     AND date_part('year', f.actual_departure)='2017'
+     AND date_part('month', f.actual_departure) NOT BETWEEN 3 AND 11
+   GROUP BY 1,
+            2) foo
+ 
+Вопрос 3. Посчитайте количество отмененных рейсов из Анапы за все время.
+
+  SELECT foo.flies
+FROM
+  (SELECT f.departure_city,
+          count(*) flies
+    FROM dst_project.flights_v f
+   WHERE f.departure_city='Анапа'
+        and f.status='Cancelled'
+   GROUP BY 1
+   ) foo
+ 
+Вопрос 4. Сколько рейсов из Анапы не летают в Москву?
+SELECT foo.flies
+FROM
+  (SELECT f.departure_city,
+          count(*) flies
+    FROM dst_project.flights_v f
+   WHERE f.departure_city='Анапа'
+        and f.arrival_city!='Москва'
+        
+   GROUP BY 1
+   ) foo
+ 
+Вопрос 5. Какая модель самолета летящего на рейсах из Анапы имеет больше всего мест?
+
+SELECT foo.model
+FROM
+  (SELECT a.model model,
+          count(s.seat_no)
+   FROM dst_project.flights_v f
+   LEFT JOIN dst_project.aircrafts a ON f.aircraft_code=a.aircraft_code
+   LEFT  JOIN dst_project.seats s ON f.aircraft_code=s.aircraft_code
+   WHERE f.departure_city='Анапа'
+   GROUP BY 1
+   ORDER BY 2 DESC
+   LIMIT 1) foo
