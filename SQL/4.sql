@@ -151,8 +151,8 @@ FROM
           count(*) flies
     FROM dst_project.flights_v f
    WHERE f.departure_city='Анапа'
-     AND date_part('year', f.actual_departure)='2017'
-     AND date_part('month', f.actual_departure) NOT BETWEEN 3 AND 11
+		 AND date_part('year', f.actual_departure)='2017'
+		 AND date_part('month', f.actual_departure) NOT BETWEEN 3 AND 11
    GROUP BY 1,2
    ) foo
           
@@ -193,4 +193,5 @@ FROM
    WHERE f.departure_city='Анапа'
    GROUP BY 1
    ORDER BY 2 DESC
-   LIMIT 1) foo
+   LIMIT 1
+   ) foo
