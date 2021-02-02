@@ -29,7 +29,8 @@ WHERE s.aircraft_code='773'
 
 FROM dst_project.flights f
 WHERE f.status = 'Arrived'
-  AND f.actual_arrival::DATE BETWEEN to_date('2017-04-01', 'YYYY-MM-DD') AND to_date('2017-09-01', 'YYYY-MM-DD')
+  	AND f.actual_arrival::DATE BETWEEN to_date('2017-04-01', 'YYYY-MM-DD') 
+	AND to_date('2017-09-01', 'YYYY-MM-DD')
   
   
 Задание 4.3  
@@ -68,14 +69,14 @@ SELECT f.flight_id,
        f.actual_arrival-f.scheduled_arrival
 FROM dst_project.flights f
 WHERE f.actual_arrival IS NOT NULL
-  ORDER  BY 2 DESC
+ORDER BY 2 DESC
   
 Задание 4.4
 
 Вопрос 1. Когда был запланирован самый первый вылет, сохраненный в базе данных?
 SELECT f.scheduled_departure
 FROM dst_project.flights f
-order by 1 asc
+ORDER BY 1 ASC
 limit 1
 Вопрос 2. Сколько минут составляет запланированное время полета в самом длительном рейсе?
 
@@ -84,7 +85,7 @@ SELECT f.flight_id,
        f.scheduled_duration
 FROM dst_project.flights_v f
 WHERE f.actual_arrival IS NOT NULL
-  ORDER  BY 2 DESC
+ORDER  BY 2 DESC
   
 Вопрос 3. Между какими аэропортами пролегает самый длительный по времени запланированный рейс?
 
@@ -94,7 +95,7 @@ SELECT f.flight_id,
        f.arrival_airport
 FROM dst_project.flights_v f
 WHERE f.actual_arrival IS NOT NULL
-  ORDER  BY 2 DESC
+ORDER  BY 2 DESC
 LIMIT 1
 
 Вопрос 4. Сколько составляет средняя дальность полета среди всех самолетов в минутах? Секунды округляются в меньшую сторону (отбрасываются до минут).
@@ -130,16 +131,16 @@ WHERE t.passenger_id='4313 788533'
 
 Вопрос 1. Анапа — курортный город на юге России. Сколько рейсов прибыло в Анапу за 2017 год?
 
-  SELECT foo.flies
+SELECT foo.flies
 FROM
   (SELECT f.arrival_city,
           date_part('year', f.actual_arrival) fly_year,
           count(*) flies
    FROM dst_project.flights_v f
-   GROUP BY 1,
-            2
+   GROUP BY 1,2
    HAVING f.arrival_city='Анапа'
-   AND date_part('year', f.actual_arrival)='2017') foo
+   	  AND date_part('year', f.actual_arrival)='2017'
+  ) foo
  
 Вопрос 2. Сколько рейсов из Анапы вылетело зимой 2017 года?
 
@@ -154,14 +155,7 @@ FROM
      AND date_part('month', f.actual_departure) NOT BETWEEN 3 AND 11
    GROUP BY 1,2
    ) foo
-          date_part('year', f.actual_departure) fly_year,
-          count(*) flies
-   FROM dst_project.flights_v f
-   WHERE f.departure_city='Анапа'
-     AND date_part('year', f.actual_departure)='2017'
-     AND date_part('month', f.actual_departure) NOT BETWEEN 3 AND 11
-   GROUP BY 1,
-            2) foo
+          
  
 Вопрос 3. Посчитайте количество отмененных рейсов из Анапы за все время.
 
