@@ -1,0 +1,23 @@
+SELECT *
+FROM
+  (SELECT f.flight_id,
+          f.departure_airport,
+          a.city departure_city
+   FROM dst_project.flights f
+   JOIN dst_project.airports a ON f.departure_airport=a.airport_code
+   WHERE f.departure_airport = 'AAQ'
+     AND (date_trunc('month', f.scheduled_departure) in ('2017-01-01',
+                                                         '2017-02-01',
+                                                         '2017-12-01'))
+     AND f.status not in ('Cancelled') ) departed
+JOIN
+  (SELECT f.flight_id,
+          f.arrival_airport,
+          a.city arrival_city
+   FROM dst_project.flights f
+   JOIN dst_project.airports a ON f.arrival_airport=a.airport_code
+   WHERE f.departure_airport = 'AAQ'
+     AND (date_trunc('month', f.scheduled_departure) in ('2017-01-01',
+                                                         '2017-02-01',
+                                                         '2017-12-01'))
+     AND f.status not in ('Cancelled') ) arrived ON arrived.flight_id=departed.flight_id
