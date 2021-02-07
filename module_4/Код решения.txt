@@ -1,23 +1,61 @@
-SELECT *
+WITH winter_anapa AS
+  (SELECT *
+     FROM dst_project.flights
+    WHERE departure_airport = 'AAQ'
+      AND (date_trunc('month', scheduled_departure) in ('2017-01-01',
+                                                       '2017-02-01',
+                                                       '2017-12-01'))
+      AND status NOT IN ('Cancelled') ),
+     aircrafts_info AS
+  (SELECT 'SU9' AS aircraft_code,
+          'Boeing 777-300' AS model,
+           1800.0 AS kg_fuel_per_hour,
+           103.0 AS sits
+    UNION 
+   SELECT '733' AS aircraft_code,
+          'Sukhoi Superjet-100' AS model,
+           2600.0 AS kg_fuel_per_hour,
+           550.0 AS sits)
+SELECT departed.flight_id,
+       departed.departure_city,
+       arrived.arrival_city,
+       departed.model,
+       round((tickets_amount.passengers_count/departed.sits)*100, 1) AS fullness,
+       round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS fuel_worth,
+       tickets_amount.total_earned_money,
+       tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit,
+       (tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50))/round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit_ratio,
+       arrival_cities.landings_count
 FROM
-  (SELECT f.flight_id,
-          f.departure_airport,
-          a.city departure_city
-   FROM dst_project.flights f
-   JOIN dst_project.airports a ON f.departure_airport=a.airport_code
-   WHERE f.departure_airport = 'AAQ'
-     AND (date_trunc('month', f.scheduled_departure) in ('2017-01-01',
-                                                         '2017-02-01',
-                                                         '2017-12-01'))
-     AND f.status not in ('Cancelled') ) departed
+  (SELECT w_a.flight_id,
+          w_a.departure_airport,
+          w_a.aircraft_code,
+          a.city departure_city,
+          a_i.model,
+          a_i.sits,
+          a_i.kg_fuel_per_hour,
+          date_part('hour', w_a.actual_arrival-w_a.actual_departure)*60+date_part('minute', w_a.actual_arrival-w_a.actual_departure) AS minutes_in_air
+   FROM winter_anapa AS w_a
+   JOIN dst_project.airports AS a ON w_a.departure_airport=a.airport_code
+   JOIN aircrafts_info AS a_i ON w_a.aircraft_code=a_i.aircraft_code) AS departed
 JOIN
-  (SELECT f.flight_id,
-          f.arrival_airport,
+  (SELECT w_a.flight_id,
+          w_a.arrival_airport,
           a.city arrival_city
-   FROM dst_project.flights f
-   JOIN dst_project.airports a ON f.arrival_airport=a.airport_code
-   WHERE f.departure_airport = 'AAQ'
-     AND (date_trunc('month', f.scheduled_departure) in ('2017-01-01',
-                                                         '2017-02-01',
-                                                         '2017-12-01'))
-     AND f.status not in ('Cancelled') ) arrived ON arrived.flight_id=departed.flight_id
+     FROM winter_anapa AS w_a
+     JOIN dst_project.airports AS a ON w_a.arrival_airport=a.airport_code) AS arrived ON departed.flight_id=arrived.flight_id
+LEFT JOIN
+  (SELECT w_a.flight_id,
+          sum(t_f.amount) AS total_earned_money,
+          count(t_f.flight_id) AS passengers_count
+     FROM winter_anapa w_a
+     JOIN dst_project.ticket_flights t_f ON w_a.flight_id=t_f.flight_id
+ GROUP BY 1) AS tickets_amount ON departed.flight_id=tickets_amount.flight_id
+JOIN 
+    (SELECT 
+            a.city,
+            count(a.city) AS landings_count
+     FROM winter_anapa AS w_a
+     JOIN dst_project.airports AS a ON w_a.arrival_airport=a.airport_code
+ GROUP BY 1) AS arrival_cities ON arrived.arrival_city=arrival_cities.city
+ORDER BY 9 DESC
