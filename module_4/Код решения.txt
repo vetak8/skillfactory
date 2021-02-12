@@ -24,8 +24,7 @@ SELECT departed.flight_id,
        round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS fuel_worth,
        tickets_amount.total_earned_money,
        tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit,
-       (tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50))/round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit_ratio,
-       arrival_cities.landings_count
+       (tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50))/round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit_ratio
 FROM
   (SELECT w_a.flight_id,
           w_a.departure_airport,
@@ -51,11 +50,4 @@ LEFT JOIN
      FROM winter_anapa w_a
      JOIN dst_project.ticket_flights t_f ON w_a.flight_id=t_f.flight_id
  GROUP BY 1) AS tickets_amount ON departed.flight_id=tickets_amount.flight_id
-JOIN 
-    (SELECT 
-            a.city,
-            count(a.city) AS landings_count
-     FROM winter_anapa AS w_a
-     JOIN dst_project.airports AS a ON w_a.arrival_airport=a.airport_code
- GROUP BY 1) AS arrival_cities ON arrived.arrival_city=arrival_cities.city
 ORDER BY 9 DESC
