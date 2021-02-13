@@ -1,31 +1,31 @@
-WITH winter_anapa AS
+/*Для удобства, информацию о самолетах и выборку зимних рейсов из Анапы, добавим в обобщенное табличное выражение */ WITH winter_anapa AS
   (SELECT *
-     FROM dst_project.flights
-    WHERE departure_airport = 'AAQ'
-      AND (date_trunc('month', scheduled_departure) in ('2017-01-01',
+   FROM dst_project.flights
+   WHERE departure_airport = 'AAQ'
+     AND (date_trunc('month', scheduled_departure) in ('2017-01-01',
                                                        '2017-02-01',
                                                        '2017-12-01'))
-      AND status NOT IN ('Cancelled') ),
-     aircrafts_info AS
+     AND status NOT IN ('Cancelled') ),
+                                                                                                                          aircrafts_info AS
   (SELECT 'SU9' AS aircraft_code,
-          'Boeing 777-300' AS model,
-           1800.0 AS kg_fuel_per_hour,
-           103.0 AS sits
-    UNION 
-   SELECT '733' AS aircraft_code,
-          'Sukhoi Superjet-100' AS model,
-           2600.0 AS kg_fuel_per_hour,
-           550.0 AS sits)
-SELECT departed.flight_id,
-       departed.departure_city,
-       arrived.arrival_city,
-       departed.model,
-       round((tickets_amount.passengers_count/departed.sits)*100, 1) AS fullness,
-       round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS fuel_worth,
-       tickets_amount.total_earned_money,
-       tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit,
-       (tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50))/round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit_ratio
-FROM
+          'Boeing 777-300' AS model, -- модель самолета
+ 1800.0 AS kg_fuel_per_hour, -- расход топлива в кг/час (из откр. источников)
+ 103.0 AS sits -- кол-во мест(из откр. источников)
+
+   UNION SELECT '733' AS aircraft_code,
+                'Sukhoi Superjet-100' AS model,
+                2600.0 AS kg_fuel_per_hour,
+                550.0 AS sits) /*Список итоговых признаков, полученных из собранной таблицы*/
+SELECT departed.flight_id, -- идентификатор рейса
+ departed.departure_city, -- город прибытия
+ arrived.arrival_city, -- город отправленния
+ departed.model,
+ round((tickets_amount.passengers_count/departed.sits)*100, 1) AS fullness, -- заполненность рейса
+ round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS fuel_worth, -- стоимость топлива
+ tickets_amount.total_earned_money, -- выручка с рейса
+ tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit, -- доход
+ (tickets_amount.total_earned_money-round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50))/round(departed.kg_fuel_per_hour/60*departed.minutes_in_air *50) AS profit_ratio -- окупаемость топлива
+FROM /* Запрос, в котором к основной таблице winter_anapa подтягиваем данные о городах и информацию о самолетах */
   (SELECT w_a.flight_id,
           w_a.departure_airport,
           w_a.aircraft_code,
@@ -33,21 +33,23 @@ FROM
           a_i.model,
           a_i.sits,
           a_i.kg_fuel_per_hour,
-          date_part('hour', w_a.actual_arrival-w_a.actual_departure)*60+date_part('minute', w_a.actual_arrival-w_a.actual_departure) AS minutes_in_air
+          date_part('hour', w_a.actual_arrival-w_a.actual_departure)*60+date_part('minute', w_a.actual_arrival-w_a.actual_departure) AS minutes_in_air -- длительность полета в минутах
+
    FROM winter_anapa AS w_a
    JOIN dst_project.airports AS a ON w_a.departure_airport=a.airport_code
-   JOIN aircrafts_info AS a_i ON w_a.aircraft_code=a_i.aircraft_code) AS departed
+   JOIN aircrafts_info AS a_i ON w_a.aircraft_code=a_i.aircraft_code) AS departed /* Присоеденяем информацию о городах прибыития  */
 JOIN
   (SELECT w_a.flight_id,
           w_a.arrival_airport,
           a.city arrival_city
-     FROM winter_anapa AS w_a
-     JOIN dst_project.airports AS a ON w_a.arrival_airport=a.airport_code) AS arrived ON departed.flight_id=arrived.flight_id
-LEFT JOIN
+   FROM winter_anapa AS w_a
+   JOIN dst_project.airports AS a ON w_a.arrival_airport=a.airport_code) AS arrived ON departed.flight_id=arrived.flight_id /* Присоеденяем инфомацию о билетах (общую стоимость, количество)*/
+LEFT JOIN -- используем LEFT JOIN для того, чтобы отобразить в таблице отсутствие данных о Новокузнецке
+
   (SELECT w_a.flight_id,
           sum(t_f.amount) AS total_earned_money,
           count(t_f.flight_id) AS passengers_count
-     FROM winter_anapa w_a
-     JOIN dst_project.ticket_flights t_f ON w_a.flight_id=t_f.flight_id
- GROUP BY 1) AS tickets_amount ON departed.flight_id=tickets_amount.flight_id
+   FROM winter_anapa w_a
+   JOIN dst_project.ticket_flights t_f ON w_a.flight_id=t_f.flight_id
+   GROUP BY 1) AS tickets_amount ON departed.flight_id=tickets_amount.flight_id
 ORDER BY 9 DESC
